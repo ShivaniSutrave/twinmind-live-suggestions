@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TwinMind — Live Suggestions</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+<!-- SETTINGS MODAL -->
+<div id="settings-modal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>⚙️ Settings</h2>
+      <button class="close-btn" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="modal-body">
+      <label>Groq API Key <span class="required">*</span></label>
+      <input type="password" id="apiKey" placeholder="gsk_..."/>
+      <label>Suggestion Prompt</label>
+      <textarea id="suggestionPrompt" rows="5"></textarea>
+      <label>Chat Prompt</label>
+      <textarea id="chatPrompt" rows="5"></textarea>
+      <label>Summary Prompt</label>
+      <textarea id="summaryPrompt" rows="4"></textarea>
+      <label>Suggestion Context Window (last N words)</label>
+      <input type="number" id="suggestionContext" min="50" max="500"/>
+      <label>Chat Context Window (last N words)</label>
+      <input type="number" id="chatContext" min="100" max="2000"/>
+      <label>Auto-Refresh Interval (seconds)</label>
+      <input type="number" id="refreshInterval" min="15" max="120"/>
+      <button class="save-btn" onclick="saveSettings()">💾 Save Settings</button>
+    </div>
+  </div>
+</div>
+
+<!-- POST-MEETING SUMMARY MODAL -->
+<div id="summary-modal" class="modal-overlay hidden">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <h2>📋 Meeting Summary</h2>
+      <button class="close-btn" onclick="closeSummary()">✕</button>
+    </div>
+    <div class="modal-body" id="summary-content">
+      <div class="loading-dots"><span></span><span></span><span></span></div>
+    </div>
+  </div>
+</div>
+
+<!-- HISTORY MODAL -->
+<div id="history-modal" class="modal-overlay hidden">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <h2>🗂️ Meeting History</h2>
+      <button class="close-btn" onclick="closeHistory()">✕</button>
+    </div>
+    <div class="modal-body" id="history-content"></div>
+  </div>
+</div>
+
+<!-- TOP BAR -->
+<header class="topbar">
+  <div class="topbar-left">
+    <span class="logo">TwinMind</span>
+    <span class="tagline">Live Suggestions</span>
+  </div>
+  <div class="topbar-right">
+    <div id="meeting-type-badge" class="meeting-badge hidden"></div>
+    <button class="icon-btn" onclick="newTopic()" title="Start new topic">🔄 New Topic</button>
+    <button class="icon-btn" onclick="openHistory()" title="Past meetings">🗂️ History</button>
+    <div class="more-menu-wrap">
+      <button class="icon-btn" onclick="toggleMoreMenu()">⋯ More</button>
+      <div id="more-menu" class="more-menu hidden">
+        <button onclick="exportSession(); toggleMoreMenu()">⬇ Export Session</button>
+        <button onclick="openSettings(); toggleMoreMenu()">⚙ Settings & API Key</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- MAIN LAYOUT: 4 columns -->
+<main class="columns">
+
+  <!-- LEFT: MIC & TRANSCRIPT -->
+  <section class="col col-left">
+    <div class="col-header">
+      <span class="col-title">1. MIC &amp; TRANSCRIPT</span>
+      <span id="rec-status" class="status-badge">IDLE</span>
+    </div>
+    <div class="mic-area">
+      <button id="mic-btn" class="mic-btn" onclick="toggleMic()">
+        <span class="mic-icon">●</span>
+        <span id="mic-label">Click to start</span>
+      </button>
+      <div id="mic-timer" class="mic-timer hidden">00:00</div>
+    </div>
+    <div class="transcript-info-box">
+      Words appear live as you speak. Auto-scrolls to latest line.
+    </div>
+    <div id="transcript-box" class="transcript-box">
+      <p class="placeholder-text">Your transcript will appear here...</p>
+    </div>
+  </section>
+
+  <!-- MIDDLE: LIVE SUGGESTIONS -->
+  <section class="col col-mid">
+    <div class="col-header">
+      <span class="col-title">2. LIVE SUGGESTIONS</span>
+      <span id="batch-count" class="status-badge">0 BATCHES</span>
+    </div>
+    <div class="suggestions-toolbar">
+      <button class="reload-btn" onclick="manualRefresh()" id="reload-btn">
+        <span class="reload-icon">↻</span> Reload suggestions
+      </button>
+      <span id="next-refresh-label" class="next-refresh">—</span>
+    </div>
+    <div class="suggestions-info-box">
+      3 fresh suggestions every ~30s based on <strong>recent speech only</strong>.
+      Cards: <span class="tag-demo answer">ANSWER</span>
+      <span class="tag-demo question">QUESTION</span>
+      <span class="tag-demo talking">TALKING POINT</span>
+      <span class="tag-demo fact">FACT CHECK</span>
+    </div>
+    <div id="suggestions-container" class="suggestions-container">
+      <p class="placeholder-text">Start recording to get live suggestions...</p>
+    </div>
+  </section>
+
+  <!-- MIDDLE-RIGHT: SMART NOTES -->
+  <section class="col col-notes">
+    <div class="col-header">
+      <span class="col-title">3. SMART NOTES</span>
+      <span class="status-badge">AUTO</span>
+    </div>
+    <div class="notes-info-box">
+      Auto-captures key points, concerns, problems and suggests solutions.
+    </div>
+    <div id="notes-container" class="notes-container">
+      <p class="placeholder-text">Notes will auto-appear as you speak...</p>
+    </div>
+  </section>
+
+  <!-- RIGHT: CHAT -->
+  <section class="col col-right">
+    <div class="col-header">
+      <span class="col-title">4. CHAT</span>
+      <span class="status-badge">SESSION-ONLY</span>
+    </div>
+    <div id="chat-messages" class="chat-messages">
+      <div class="chat-info-box">
+        Click any suggestion for a detailed answer, or type your own question below.
+      </div>
+      <p class="placeholder-text" id="chat-placeholder">Click a suggestion or type a question.</p>
+    </div>
+    <div class="chat-input-area">
+      <input type="text" id="chat-input" placeholder="Ask anything..." onkeydown="handleChatKey(event)"/>
+      <button class="send-btn" onclick="sendChatMessage()">Send</button>
+    </div>
+  </section>
+
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
