@@ -25,7 +25,9 @@
 html, body { height: 100%; overflow: hidden; }
 body { font-family: var(--font-main); background: var(--bg); color: var(--text); display: flex; flex-direction: column; }
 
-/* TOPBAR */
+.welcome-banner { display: flex; align-items: center; justify-content: space-between; padding: 8px 20px; background: rgba(99,102,241,0.15); border-bottom: 1px solid rgba(99,102,241,0.3); font-size: 0.82rem; color: var(--accent2); flex-shrink: 0; }
+.welcome-banner a { color: var(--green); text-decoration: underline; }
+.welcome-banner button { background: none; border: none; color: var(--accent2); cursor: pointer; font-size: 1rem; padding: 0 4px; }
 .topbar { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; background: var(--bg2); border-bottom: 1px solid var(--border); flex-shrink: 0; height: 52px; }
 .topbar-left { display: flex; align-items: center; gap: 12px; }
 .logo { font-size: 1.1rem; font-weight: 800; background: linear-gradient(135deg, var(--accent2), var(--green)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
